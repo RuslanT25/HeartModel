@@ -10,7 +10,8 @@ namespace HeartMVC
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
-            builder.Services.AddScoped<HeartPredictionService>();
+            builder.Services.AddScoped<FastForestClassificationService>();
+            builder.Services.AddScoped<LogisticRegressionService>();
 
             var app = builder.Build();
 

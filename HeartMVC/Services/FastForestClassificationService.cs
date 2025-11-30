@@ -4,17 +4,17 @@ using HeartMVC.Models;
 
 namespace HeartMVC.Services
 {
-    public class HeartPredictionService
+    public class FastForestClassificationService
     {
         private readonly MLContext _mlContext;
         private readonly string _modelPath;
         private readonly string _dataPath;
-        private ITransformer _model;
+        private ITransformer? _model;
 
-        public HeartPredictionService(IWebHostEnvironment environment)
+        public FastForestClassificationService(IWebHostEnvironment environment)
         {
             _mlContext = new MLContext(seed: 1);
-            _modelPath = Path.Combine(environment.WebRootPath, "Data", "heart_model.zip");
+            _modelPath = Path.Combine(environment.WebRootPath, "Data", "fastforest_model.zip");
             _dataPath = Path.Combine(environment.WebRootPath, "Data", "heart.csv");
         }
 
@@ -45,7 +45,7 @@ namespace HeartMVC.Services
                 var split = _mlContext.Data.TrainTestSplit(dataView, testFraction: 0.2);
                 var trainSet = split.TrainSet;
 
-                // Build pipeline
+                // Build pipeline for FastForest Classification
                 var pipeline = _mlContext.Transforms.Concatenate(
                         "Features",
                         nameof(HeartData.Age),
@@ -78,7 +78,7 @@ namespace HeartMVC.Services
             });
         }
 
-        public HeartPrediction PredictHeartDisease(HeartInputViewModel input)
+        public bool PredictClassification(HeartInputViewModel input)
         {
             // Load model if not loaded
             if (_model == null)
@@ -107,13 +107,9 @@ namespace HeartMVC.Services
             // Create prediction engine
             var predictionEngine = _mlContext.Model.CreatePredictionEngine<HeartData, HeartPrediction>(_model);
 
-            // Make prediction
+            // Make prediction and return only the boolean result
             var prediction = predictionEngine.Predict(heartData);
-            
-            // Calculate probability (sigmoid function)
-            prediction.Probability = 1.0f / (1.0f + (float)Math.Exp(-prediction.Score));
-
-            return prediction;
+            return prediction.Prediction;
         }
     }
 }

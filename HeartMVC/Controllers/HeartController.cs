@@ -6,20 +6,26 @@ namespace HeartMVC.Controllers
 {
     public class HeartController : Controller
     {
-        private readonly HeartPredictionService _predictionService;
+        private readonly FastForestClassificationService _fastForestService;
+        private readonly LogisticRegressionService _logisticService;
 
-        public HeartController(HeartPredictionService predictionService)
+        public HeartController(
+            FastForestClassificationService fastForestService,
+            LogisticRegressionService logisticService)
         {
-            _predictionService = predictionService;
+            _fastForestService = fastForestService;
+            _logisticService = logisticService;
         }
 
         public async Task<IActionResult> Index()
         {
-            // Ensure model exists
-            var modelExists = await _predictionService.EnsureModelExistsAsync();
-            if (!modelExists)
+            // Ensure both models exist
+            var fastForestExists = await _fastForestService.EnsureModelExistsAsync();
+            var logisticExists = await _logisticService.EnsureModelExistsAsync();
+            
+            if (!fastForestExists || !logisticExists)
             {
-                ViewBag.Error = "Model dosyası bulunamadı. Lütfen heart.csv dosyasının wwwroot/Data klasöründe olduğundan emin olun.";
+                ViewBag.Error = "Model dosyaları bulunamadı. Lütfen heart.csv dosyasının wwwroot/Data klasöründe olduğundan emin olun.";
             }
 
             return View(new HeartInputViewModel());
@@ -35,24 +41,26 @@ namespace HeartMVC.Controllers
 
             try
             {
-                var prediction = _predictionService.PredictHeartDisease(model);
+                // Get predictions from both models
+                var hasHeartDisease = _fastForestService.PredictClassification(model);
+                var riskProbability = _logisticService.PredictProbability(model);
 
                 var result = new HeartResultViewModel
                 {
                     InputData = model,
-                    HasHeartDisease = prediction.Prediction,
-                    Score = prediction.Score,
-                    Probability = prediction.Probability * 100, // Convert to percentage
+                    HasHeartDisease = hasHeartDisease,
+                    RiskProbability = riskProbability * 100, // Convert to percentage
+                    ClassificationResult = hasHeartDisease ? "Risk Var" : "Risk Yok"
                 };
 
-                // Determine risk level and styling
-                if (result.Probability >= 70)
+                // Determine risk level and styling based on probability
+                if (result.RiskProbability >= 70)
                 {
                     result.RiskLevel = "Yüksek Risk";
                     result.RiskColor = "danger";
                     result.Message = "Kalp hastalığı riski yüksek. Lütfen bir kardiyolog ile görüşün.";
                 }
-                else if (result.Probability >= 40)
+                else if (result.RiskProbability >= 40)
                 {
                     result.RiskLevel = "Orta Risk";
                     result.RiskColor = "warning";
