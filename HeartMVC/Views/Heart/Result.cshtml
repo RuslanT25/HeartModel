@@ -1,0 +1,140 @@
+@model HeartMVC.Models.HeartResultViewModel
+
+@{
+    ViewData["Title"] = "Tahmin Sonucu";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Sonuç Kartı -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-@Model.RiskColor text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Kalp Hastalığı Risk Tahmini Sonucu
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <div class="display-1 text-@Model.RiskColor mb-3">
+                                    @if (Model.RiskColor == "success")
+                                    {
+                                        <i class="fas fa-heart"></i>
+                                    }
+                                    else if (Model.RiskColor == "warning")
+                                    {
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-exclamation-circle"></i>
+                                    }
+                                </div>
+                                <h2 class="text-@Model.RiskColor">@Model.RiskLevel</h2>
+                                <h4 class="text-muted">Risk Oranı: %@Model.Probability.ToString("F1")</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="progress mb-3" style="height: 30px;">
+                                <div class="progress-bar bg-@Model.RiskColor" role="progressbar" 
+                                     style="width: @Model.Probability.ToString("F1")%" 
+                                     aria-valuenow="@Model.Probability" aria-valuemin="0" aria-valuemax="100">
+                                    %@Model.Probability.ToString("F1")
+                                </div>
+                            </div>
+                            <div class="alert alert-@Model.RiskColor">
+                                <strong>Değerlendirme:</strong><br>
+                                @Model.Message
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teknik Detaylar -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Teknik Detaylar
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Model Tahmini:</strong><br>
+                            <span class="badge bg-@(Model.HasHeartDisease ? "danger" : "success") fs-6">
+                                @(Model.HasHeartDisease ? "Risk Var" : "Risk Yok")
+                            </span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Güven Skoru:</strong><br>
+                            <code>@Model.Score.ToString("F4")</code>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Algoritma:</strong><br>
+                            Random Forest
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Girilen Veriler -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Girilen Veriler
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr><td><strong>Yaş:</strong></td><td>@Model.InputData.Age</td></tr>
+                                <tr><td><strong>Cinsiyet:</strong></td><td>@(Model.InputData.Sex == 1 ? "Erkek" : "Kadın")</td></tr>
+                                <tr><td><strong>Göğüs Ağrısı:</strong></td><td>Tip @Model.InputData.Cp</td></tr>
+                                <tr><td><strong>Kan Basıncı:</strong></td><td>@Model.InputData.Trestbps mmHg</td></tr>
+                                <tr><td><strong>Kolesterol:</strong></td><td>@Model.InputData.Chol mg/dl</td></tr>
+                                <tr><td><strong>Açlık Kan Şekeri:</strong></td><td>@(Model.InputData.Fbs == 1 ? "> 120 mg/dl" : "≤ 120 mg/dl")</td></tr>
+                                <tr><td><strong>EKG Sonucu:</strong></td><td>@Model.InputData.Restecg</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr><td><strong>Max Kalp Atışı:</strong></td><td>@Model.InputData.Thalach bpm</td></tr>
+                                <tr><td><strong>Egzersiz Anginası:</strong></td><td>@(Model.InputData.Exang == 1 ? "Evet" : "Hayır")</td></tr>
+                                <tr><td><strong>ST Depresyonu:</strong></td><td>@Model.InputData.Oldpeak</td></tr>
+                                <tr><td><strong>ST Eğimi:</strong></td><td>@Model.InputData.Slope</td></tr>
+                                <tr><td><strong>Büyük Damar:</strong></td><td>@Model.InputData.Ca</td></tr>
+                                <tr><td><strong>Thalassemia:</strong></td><td>@Model.InputData.Thal</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aksiyonlar -->
+            <div class="text-center">
+                <a asp-action="Index" class="btn btn-primary btn-lg me-3">
+                    <i class="fas fa-redo me-2"></i>
+                    Yeni Tahmin Yap
+                </a>
+                <button class="btn btn-secondary btn-lg" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>
+                    Sonucu Yazdır
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @@media print {
+        .btn { display: none !important; }
+        .card { border: 1px solid #000 !important; }
+    }
+</style>

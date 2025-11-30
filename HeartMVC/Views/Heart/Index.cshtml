@@ -1,0 +1,177 @@
+@model HeartMVC.Models.HeartInputViewModel
+
+@{
+    ViewData["Title"] = "Kalp Hastalığı Risk Tahmini";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-heartbeat me-2"></i>
+                        Kalp Hastalığı Risk Tahmini
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @ViewBag.Error
+                        </div>
+                    }
+
+                    <p class="text-muted mb-4">
+                        Lütfen aşağıdaki bilgileri eksiksiz doldurun. Makine öğrenimi modelimiz bu verilere dayanarak kalp hastalığı riskinizi tahmin edecektir.
+                    </p>
+
+                    <form asp-action="Predict" method="post">
+                        <div class="row">
+                            <!-- Temel Bilgiler -->
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">Temel Bilgiler</h5>
+                                
+                                <div class="mb-3">
+                                    <label asp-for="Age" class="form-label"></label>
+                                    <input asp-for="Age" class="form-control" placeholder="Örn: 45" />
+                                    <span asp-validation-for="Age" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Sex" class="form-label"></label>
+                                    <select asp-for="Sex" class="form-select">
+                                        <option value="">Seçiniz</option>
+                                        <option value="0">Kadın</option>
+                                        <option value="1">Erkek</option>
+                                    </select>
+                                    <span asp-validation-for="Sex" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Cp" class="form-label"></label>
+                                    <select asp-for="Cp" class="form-select">
+                                        <option value="">Seçiniz</option>
+                                        <option value="0">Tipik Angina</option>
+                                        <option value="1">Atipik Angina</option>
+                                        <option value="2">Angina Olmayan Ağrı</option>
+                                        <option value="3">Asemptomatik</option>
+                                    </select>
+                                    <span asp-validation-for="Cp" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Trestbps" class="form-label"></label>
+                                    <input asp-for="Trestbps" class="form-control" placeholder="Örn: 120" />
+                                    <span asp-validation-for="Trestbps" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Chol" class="form-label"></label>
+                                    <input asp-for="Chol" class="form-control" placeholder="Örn: 200" />
+                                    <span asp-validation-for="Chol" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Fbs" class="form-label"></label>
+                                    <select asp-for="Fbs" class="form-select">
+                                        <option value="">Seçiniz</option>
+                                        <option value="0">Hayır (≤ 120 mg/dl)</option>
+                                        <option value="1">Evet (> 120 mg/dl)</option>
+                                    </select>
+                                    <span asp-validation-for="Fbs" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <!-- Klinik Testler -->
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">Klinik Test Sonuçları</h5>
+
+                                <div class="mb-3">
+                                    <label asp-for="Restecg" class="form-label"></label>
+                                    <select asp-for="Restecg" class="form-select">
+                                        <option value="">Seçiniz</option>
+                                        <option value="0">Normal</option>
+                                        <option value="1">ST-T Dalga Anormalliği</option>
+                                        <option value="2">Sol Ventrikül Hipertrofisi</option>
+                                    </select>
+                                    <span asp-validation-for="Restecg" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Thalach" class="form-label"></label>
+                                    <input asp-for="Thalach" class="form-control" placeholder="Örn: 150" />
+                                    <span asp-validation-for="Thalach" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Exang" class="form-label"></label>
+                                    <select asp-for="Exang" class="form-select">
+                                        <option value="">Seçiniz</option>
+                                        <option value="0">Hayır</option>
+                                        <option value="1">Evet</option>
+                                    </select>
+                                    <span asp-validation-for="Exang" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Oldpeak" class="form-label"></label>
+                                    <input asp-for="Oldpeak" class="form-control" step="0.1" placeholder="Örn: 1.0" />
+                                    <span asp-validation-for="Oldpeak" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Slope" class="form-label"></label>
+                                    <select asp-for="Slope" class="form-select">
+                                        <option value="">Seçiniz</option>
+                                        <option value="0">Yükselen</option>
+                                        <option value="1">Düz</option>
+                                        <option value="2">Alçalan</option>
+                                    </select>
+                                    <span asp-validation-for="Slope" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Ca" class="form-label"></label>
+                                    <select asp-for="Ca" class="form-select">
+                                        <option value="">Seçiniz</option>
+                                        <option value="0">0</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                    </select>
+                                    <span asp-validation-for="Ca" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Thal" class="form-label"></label>
+                                    <select asp-for="Thal" class="form-select">
+                                        <option value="">Seçiniz</option>
+                                        <option value="0">Normal</option>
+                                        <option value="1">Sabit Defekt</option>
+                                        <option value="2">Tersine Çevrilebilir Defekt</option>
+                                        <option value="3">Diğer</option>
+                                    </select>
+                                    <span asp-validation-for="Thal" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-chart-line me-2"></i>
+                                Risk Tahmini Yap
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
