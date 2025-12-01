@@ -150,4 +150,148 @@ body {
     border-radius: 15px;
     padding: 1.5rem;
     margin: 1rem 0;
+}/* M
+odel Evaluation Panel Styles */
+.evaluation-panel {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    margin: 1rem 0;
+}
+
+.confusion-matrix {
+    font-size: 0.9rem;
+}
+
+.confusion-matrix td, .confusion-matrix th {
+    text-align: center;
+    vertical-align: middle;
+    padding: 1rem;
+    border: 2px solid #dee2e6;
+}
+
+.confusion-matrix .bg-success-subtle {
+    background-color: rgba(25, 135, 84, 0.15) !important;
+    border-color: rgba(25, 135, 84, 0.3) !important;
+}
+
+.confusion-matrix .bg-danger-subtle {
+    background-color: rgba(220, 53, 69, 0.15) !important;
+    border-color: rgba(220, 53, 69, 0.3) !important;
+}
+
+/* Metric badges with enhanced styling */
+.badge.bg-success {
+    background-color: #198754 !important;
+    box-shadow: 0 2px 4px rgba(25, 135, 84, 0.3);
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+/* Model comparison cards */
+.card.border-success {
+    border-width: 2px !important;
+    box-shadow: 0 4px 8px rgba(25, 135, 84, 0.1);
+}
+
+.card.border-info {
+    border-width: 2px !important;
+    box-shadow: 0 4px 8px rgba(13, 202, 240, 0.1);
+}
+
+.card.border-secondary {
+    border-width: 2px !important;
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.1);
+}
+
+/* Responsive table improvements */
+@media (max-width: 768px) {
+    .confusion-matrix {
+        font-size: 0.8rem;
+    }
+    
+    .confusion-matrix td, .confusion-matrix th {
+        padding: 0.5rem;
+    }
+    
+    .table-responsive {
+        border-radius: 10px;
+    }
+}
+
+/* Print styles for evaluation report */
+@media print {
+    .btn, .navbar, .footer {
+        display: none !important;
+    }
+    
+    .card {
+        border: 2px solid #000 !important;
+        break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+    
+    .card-header {
+        background-color: #f8f9fa !important;
+        color: #000 !important;
+        border-bottom: 2px solid #000 !important;
+    }
+    
+    .confusion-matrix {
+        border: 2px solid #000 !important;
+    }
+    
+    .confusion-matrix td, .confusion-matrix th {
+        border: 1px solid #000 !important;
+    }
+    
+    .badge {
+        border: 1px solid #000 !important;
+        color: #000 !important;
+        background-color: #fff !important;
+    }
+}
+
+/* Enhanced hover effects */
+.card:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+.table-striped tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Navigation active state for evaluation */
+.navbar-nav .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+}
+
+/* Loading animation for evaluation */
+.evaluation-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.evaluation-loading .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Metric explanation tooltips */
+.metric-tooltip {
+    cursor: help;
+    border-bottom: 1px dotted #6c757d;
 }

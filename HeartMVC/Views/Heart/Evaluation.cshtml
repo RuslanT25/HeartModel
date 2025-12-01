@@ -1,0 +1,361 @@
+@model HeartMVC.Models.EvaluationResultViewModel
+
+@{
+    ViewData["Title"] = "Model Performance Evaluation";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Model Performance Evaluation
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (Model.HasError)
+                    {
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @Model.ErrorMessage
+                        </div>
+                        <div class="text-center">
+                            <a asp-action="Index" class="btn btn-primary">
+                                <i class="fas fa-arrow-left me-2"></i>Ana Sayfaya Dön
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Değerlendirme Tarihi:</strong> @Model.EvaluationDate.ToString("dd.MM.yyyy HH:mm")</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Test Veri Boyutu:</strong> @Model.TestDataSize örneklem</p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Fast Forest Model Results -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="card border-success h-100">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-tree me-2"></i>
+                                            @Model.FastForestMetrics.ModelName
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Performance Metrics Table -->
+                                        <h6 class="text-success mb-3">Performance Metrics</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-striped">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><strong>Accuracy</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.FastForestMetrics.Accuracy)">
+                                                                @Model.FastForestMetrics.Accuracy.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Precision</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.FastForestMetrics.Precision)">
+                                                                @Model.FastForestMetrics.Precision.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Recall</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.FastForestMetrics.Recall)">
+                                                                @Model.FastForestMetrics.Recall.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>F1 Score</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.FastForestMetrics.F1Score)">
+                                                                @Model.FastForestMetrics.F1Score.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>AUC</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.FastForestMetrics.AUC)">
+                                                                @Model.FastForestMetrics.AUC.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <!-- Confusion Matrix -->
+                                        <h6 class="text-success mb-3 mt-4">Confusion Matrix</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered confusion-matrix">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th rowspan="2" class="align-middle text-center">Gerçek</th>
+                                                        <th colspan="2" class="text-center">Tahmin</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <th class="text-center">Risk Yok</th>
+                                                        <th class="text-center">Risk Var</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <th class="table-light">Risk Yok</th>
+                                                        <td class="text-center bg-success-subtle">
+                                                            <strong>@Model.FastForestMetrics.ConfusionMatrix.TrueNegative</strong>
+                                                            <small class="d-block text-muted">True Negative</small>
+                                                        </td>
+                                                        <td class="text-center bg-danger-subtle">
+                                                            <strong>@Model.FastForestMetrics.ConfusionMatrix.FalsePositive</strong>
+                                                            <small class="d-block text-muted">False Positive</small>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th class="table-light">Risk Var</th>
+                                                        <td class="text-center bg-danger-subtle">
+                                                            <strong>@Model.FastForestMetrics.ConfusionMatrix.FalseNegative</strong>
+                                                            <small class="d-block text-muted">False Negative</small>
+                                                        </td>
+                                                        <td class="text-center bg-success-subtle">
+                                                            <strong>@Model.FastForestMetrics.ConfusionMatrix.TruePositive</strong>
+                                                            <small class="d-block text-muted">True Positive</small>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Logistic Regression Model Results -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="card border-info h-100">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-chart-line me-2"></i>
+                                            @Model.LogisticRegressionMetrics.ModelName
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Performance Metrics Table -->
+                                        <h6 class="text-info mb-3">Performance Metrics</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-striped">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><strong>Accuracy</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.LogisticRegressionMetrics.Accuracy)">
+                                                                @Model.LogisticRegressionMetrics.Accuracy.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Precision</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.LogisticRegressionMetrics.Precision)">
+                                                                @Model.LogisticRegressionMetrics.Precision.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Recall</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.LogisticRegressionMetrics.Recall)">
+                                                                @Model.LogisticRegressionMetrics.Recall.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>F1 Score</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.LogisticRegressionMetrics.F1Score)">
+                                                                @Model.LogisticRegressionMetrics.F1Score.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>AUC</strong></td>
+                                                        <td class="text-end">
+                                                            <span class="badge bg-@GetMetricColor(Model.LogisticRegressionMetrics.AUC)">
+                                                                @Model.LogisticRegressionMetrics.AUC.ToString("P2")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <!-- Confusion Matrix -->
+                                        <h6 class="text-info mb-3 mt-4">Confusion Matrix</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered confusion-matrix">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th rowspan="2" class="align-middle text-center">Gerçek</th>
+                                                        <th colspan="2" class="text-center">Tahmin</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <th class="text-center">Risk Yok</th>
+                                                        <th class="text-center">Risk Var</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <th class="table-light">Risk Yok</th>
+                                                        <td class="text-center bg-success-subtle">
+                                                            <strong>@Model.LogisticRegressionMetrics.ConfusionMatrix.TrueNegative</strong>
+                                                            <small class="d-block text-muted">True Negative</small>
+                                                        </td>
+                                                        <td class="text-center bg-danger-subtle">
+                                                            <strong>@Model.LogisticRegressionMetrics.ConfusionMatrix.FalsePositive</strong>
+                                                            <small class="d-block text-muted">False Positive</small>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th class="table-light">Risk Var</th>
+                                                        <td class="text-center bg-danger-subtle">
+                                                            <strong>@Model.LogisticRegressionMetrics.ConfusionMatrix.FalseNegative</strong>
+                                                            <small class="d-block text-muted">False Negative</small>
+                                                        </td>
+                                                        <td class="text-center bg-success-subtle">
+                                                            <strong>@Model.LogisticRegressionMetrics.ConfusionMatrix.TruePositive</strong>
+                                                            <small class="d-block text-muted">True Positive</small>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Model Comparison Summary -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card border-secondary">
+                                    <div class="card-header bg-secondary text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-balance-scale me-2"></i>
+                                            Model Karşılaştırması
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6 class="text-success">Random Forest Avantajları:</h6>
+                                                <ul class="list-unstyled">
+                                                    <li><i class="fas fa-check text-success me-2"></i>Overfitting'e karşı dayanıklı</li>
+                                                    <li><i class="fas fa-check text-success me-2"></i>Feature importance sağlar</li>
+                                                    <li><i class="fas fa-check text-success me-2"></i>Non-linear ilişkileri yakalar</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6 class="text-info">Logistic Regression Avantajları:</h6>
+                                                <ul class="list-unstyled">
+                                                    <li><i class="fas fa-check text-info me-2"></i>Hızlı eğitim ve tahmin</li>
+                                                    <li><i class="fas fa-check text-info me-2"></i>Yorumlanabilir katsayılar</li>
+                                                    <li><i class="fas fa-check text-info me-2"></i>Probability çıktısı verir</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="text-center mt-4">
+                            <a asp-action="Index" class="btn btn-primary btn-lg me-3">
+                                <i class="fas fa-arrow-left me-2"></i>Ana Sayfaya Dön
+                            </a>
+                            <button class="btn btn-secondary btn-lg me-3" onclick="window.print()">
+                                <i class="fas fa-print me-2"></i>Raporu Yazdır
+                            </button>
+                            <button class="btn btn-info btn-lg" onclick="location.reload()">
+                                <i class="fas fa-sync-alt me-2"></i>Yenile
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string GetMetricColor(double value)
+    {
+        if (value >= 0.85) return "success";
+        if (value >= 0.70) return "warning";
+        return "danger";
+    }
+}
+
+<style>
+    .confusion-matrix td, .confusion-matrix th {
+        text-align: center;
+        vertical-align: middle;
+        padding: 1rem;
+    }
+    
+    .confusion-matrix .bg-success-subtle {
+        background-color: rgba(25, 135, 84, 0.1) !important;
+    }
+    
+    .confusion-matrix .bg-danger-subtle {
+        background-color: rgba(220, 53, 69, 0.1) !important;
+    }
+    
+    @@media print {
+        .btn { display: none !important; }
+        .card { border: 1px solid #000 !important; }
+    }
+</style>
+
+<script>
+    // Add loading indicator during page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mark navigation as active
+        const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+        navLinks.forEach(link => {
+            if (link.href.includes('Evaluation')) {
+                link.classList.add('active');
+            }
+        });
+        
+        // Add tooltips for metrics (if Bootstrap tooltips are available)
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+    });
+    
+    // Add smooth scrolling for better UX
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+</script>

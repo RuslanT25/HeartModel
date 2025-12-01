@@ -8,18 +8,20 @@ namespace HeartMVC.Controllers
     {
         private readonly FastForestClassificationService _fastForestService;
         private readonly LogisticRegressionService _logisticService;
+        private readonly ModelEvaluationService _evaluationService;
 
         public HeartController(
             FastForestClassificationService fastForestService,
-            LogisticRegressionService logisticService)
+            LogisticRegressionService logisticService,
+            ModelEvaluationService evaluationService)
         {
             _fastForestService = fastForestService;
             _logisticService = logisticService;
+            _evaluationService = evaluationService;
         }
 
         public async Task<IActionResult> Index()
         {
-            // Ensure both models exist
             var fastForestExists = await _fastForestService.EnsureModelExistsAsync();
             var logisticExists = await _logisticService.EnsureModelExistsAsync();
             
@@ -41,7 +43,6 @@ namespace HeartMVC.Controllers
 
             try
             {
-                // Get predictions from both models
                 var hasHeartDisease = _fastForestService.PredictClassification(model);
                 var riskProbability = _logisticService.PredictProbability(model);
 
@@ -53,7 +54,6 @@ namespace HeartMVC.Controllers
                     ClassificationResult = hasHeartDisease ? "Risk Var" : "Risk Yok"
                 };
 
-                // Determine risk level and styling based on probability
                 if (result.RiskProbability >= 70)
                 {
                     result.RiskLevel = "Yüksek Risk";
@@ -79,6 +79,24 @@ namespace HeartMVC.Controllers
             {
                 ViewBag.Error = $"Tahmin sırasında hata oluştu: {ex.Message}";
                 return View("Index", model);
+            }
+        }
+
+        public async Task<IActionResult> Evaluation()
+        {
+            try
+            {
+                var evaluationResult = await _evaluationService.EvaluateModelsAsync();
+                return View(evaluationResult);
+            }
+            catch (Exception ex)
+            {
+                var errorResult = new EvaluationResultViewModel
+                {
+                    HasError = true,
+                    ErrorMessage = $"Model değerlendirme sırasında beklenmeyen bir hata oluştu: {ex.Message}"
+                };
+                return View(errorResult);
             }
         }
     }

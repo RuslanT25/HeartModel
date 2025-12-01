@@ -34,17 +34,14 @@ namespace HeartMVC.Services
         {
             await Task.Run(() =>
             {
-                // Load CSV
                 IDataView dataView = _mlContext.Data.LoadFromTextFile<HeartData>(
                     _dataPath,
                     hasHeader: true,
                     separatorChar: ',');
 
-                // Split into train/test
                 var split = _mlContext.Data.TrainTestSplit(dataView, testFraction: 0.2);
                 var trainSet = split.TrainSet;
 
-                // Build pipeline for Logistic Regression
                 var pipeline = _mlContext.Transforms.Concatenate(
                         "Features",
                         nameof(HeartData.Age),
@@ -64,23 +61,19 @@ namespace HeartMVC.Services
                         labelColumnName: "Label",
                         featureColumnName: "Features"));
 
-                // Train model
                 var model = pipeline.Fit(trainSet);
 
-                // Save model
                 _mlContext.Model.Save(model, trainSet.Schema, _modelPath);
             });
         }
 
         public float PredictProbability(HeartInputViewModel input)
         {
-            // Load model if not loaded
             if (_model == null)
             {
                 _model = _mlContext.Model.Load(_modelPath, out _);
             }
 
-            // Convert input to HeartData
             var heartData = new HeartData
             {
                 Age = input.Age,
@@ -98,13 +91,10 @@ namespace HeartMVC.Services
                 Thal = input.Thal
             };
 
-            // Create prediction engine
             var predictionEngine = _mlContext.Model.CreatePredictionEngine<HeartData, HeartPrediction>(_model);
 
-            // Make prediction and calculate probability
             var prediction = predictionEngine.Predict(heartData);
             
-            // Convert score to probability using sigmoid function
             float probability = 1.0f / (1.0f + (float)Math.Exp(-prediction.Score));
             
             return probability;

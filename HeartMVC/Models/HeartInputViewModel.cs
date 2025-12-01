@@ -11,11 +11,11 @@ namespace HeartMVC.Models
 
         [Required]
         [Display(Name = "Cinsiyet")]
-        public int Sex { get; set; } // 0: Kadın, 1: Erkek
+        public int Sex { get; set; } 
 
         [Required]
         [Display(Name = "Göğüs Ağrısı Tipi")]
-        public int Cp { get; set; } // 0-3 arası
+        public int Cp { get; set; } 
 
         [Required]
         [Display(Name = "Dinlenme Kan Basıncı")]
@@ -29,11 +29,11 @@ namespace HeartMVC.Models
 
         [Required]
         [Display(Name = "Açlık Kan Şekeri > 120 mg/dl")]
-        public int Fbs { get; set; } // 0: Hayır, 1: Evet
+        public int Fbs { get; set; } 
 
         [Required]
         [Display(Name = "Dinlenme EKG Sonuçları")]
-        public int Restecg { get; set; } // 0-2 arası
+        public int Restecg { get; set; } 
 
         [Required]
         [Display(Name = "Maksimum Kalp Atış Hızı")]
@@ -42,7 +42,7 @@ namespace HeartMVC.Models
 
         [Required]
         [Display(Name = "Egzersiz Kaynaklı Angina")]
-        public int Exang { get; set; } // 0: Hayır, 1: Evet
+        public int Exang { get; set; } 
 
         [Required]
         [Display(Name = "ST Depresyonu")]
@@ -51,14 +51,14 @@ namespace HeartMVC.Models
 
         [Required]
         [Display(Name = "ST Segmenti Eğimi")]
-        public int Slope { get; set; } // 0-2 arası
+        public int Slope { get; set; } 
 
         [Required]
         [Display(Name = "Büyük Damar Sayısı")]
-        public int Ca { get; set; } // 0-4 arası
+        public int Ca { get; set; }
 
         [Required]
         [Display(Name = "Thalassemia")]
-        public int Thal { get; set; } // 0-3 arası
+        public int Thal { get; set; }
     }
 }
