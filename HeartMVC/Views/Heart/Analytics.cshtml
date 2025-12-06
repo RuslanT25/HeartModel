@@ -95,7 +95,7 @@
                     <div class="card-header bg-info text-white">
                         <h4 class="mb-0">
                             <i class="fas fa-chart-area me-2"></i>
-                            ROC Curve Analysis (Logistic Regression)
+                            ROC Curve Analysis - Model Karşılaştırması
                         </h4>
                     </div>
                     <div class="card-body">
@@ -104,30 +104,57 @@
                                 <canvas id="rocCurveChart" width="600" height="400"></canvas>
                             </div>
                             <div class="col-lg-4">
-                                <div class="card border-info">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">ROC Metrikleri</h6>
+                                <!-- Logistic Regression Metrics -->
+                                <div class="card border-info mb-3">
+                                    <div class="card-header bg-info text-white">
+                                        <h6 class="mb-0">Logistic Regression</h6>
                                     </div>
                                     <div class="card-body">
-                                        <div class="mb-3">
-                                            <strong>AUC (Area Under Curve):</strong>
-                                            <br>
+                                        <div class="mb-2">
+                                            <strong>AUC:</strong>
                                             <span class="badge bg-@GetAUCColor(Model.AUCValue) fs-6">
                                                 @Model.AUCValue.ToString("F3")
                                             </span>
                                         </div>
-                                        <div class="mb-3">
+                                        <div class="mb-2">
                                             <strong>Optimal Threshold:</strong>
-                                            <br>
                                             <code>@Model.OptimalThreshold.ToString("F3")</code>
                                         </div>
-                                        <div class="alert alert-info">
-                                            <small>
-                                                <strong>AUC Yorumu:</strong><br>
-                                                @GetAUCInterpretation(Model.AUCValue)
-                                            </small>
+                                    </div>
+                                </div>
+
+                                <!-- Random Forest Metrics -->
+                                <div class="card border-success mb-3">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">Random Forest</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            <strong>AUC:</strong>
+                                            <span class="badge bg-@GetAUCColor(Model.FastForestAUCValue) fs-6">
+                                                @Model.FastForestAUCValue.ToString("F3")
+                                            </span>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong>Optimal Threshold:</strong>
+                                            <code>@Model.FastForestOptimalThreshold.ToString("F3")</code>
                                         </div>
                                     </div>
+                                </div>
+
+                                <!-- Comparison -->
+                                <div class="alert alert-info">
+                                    <small>
+                                        <strong>En İyi Model:</strong><br>
+                                        @if (Model.AUCValue > Model.FastForestAUCValue)
+                                        {
+                                            <span class="text-info">Logistic Regression (AUC: @Model.AUCValue.ToString("F3"))</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-success">Random Forest (AUC: @Model.FastForestAUCValue.ToString("F3"))</span>
+                                        }
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -421,9 +448,15 @@
                 }
             });
 
-            // ROC Curve Chart
+            // ROC Curve Chart - Both Models
             const rocCtx = document.getElementById('rocCurveChart').getContext('2d');
-            const rocData = @Html.Raw(Json.Serialize(Model.ROCCurveData.Select(r => new { 
+            const logisticROCData = @Html.Raw(Json.Serialize(Model.ROCCurveData.Select(r => new { 
+                x = r.FalsePositiveRate, 
+                y = r.TruePositiveRate,
+                threshold = r.Threshold
+            })));
+
+            const fastForestROCData = @Html.Raw(Json.Serialize(Model.FastForestROCCurveData.Select(r => new { 
                 x = r.FalsePositiveRate, 
                 y = r.TruePositiveRate,
                 threshold = r.Threshold
@@ -433,15 +466,25 @@
                 type: 'line',
                 data: {
                     datasets: [{
-                        label: 'ROC Curve',
-                        data: rocData,
+                        label: 'Logistic Regression (AUC: @Model.AUCValue.ToString("F3"))',
+                        data: logisticROCData,
                         borderColor: 'rgba(13, 202, 240, 1)',
                         backgroundColor: 'rgba(13, 202, 240, 0.1)',
                         borderWidth: 3,
-                        fill: true,
-                        tension: 0.1
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 1
                     }, {
-                        label: 'Random Classifier',
+                        label: 'Random Forest (AUC: @Model.FastForestAUCValue.ToString("F3"))',
+                        data: fastForestROCData,
+                        borderColor: 'rgba(25, 135, 84, 1)',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 1
+                    }, {
+                        label: 'Random Classifier (AUC: 0.500)',
                         data: [{x: 0, y: 0}, {x: 1, y: 1}],
                         borderColor: 'rgba(220, 53, 69, 0.8)',
                         borderWidth: 2,
@@ -455,14 +498,21 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'ROC Curve (AUC: @Model.AUCValue.ToString("F3"))'
+                            text: 'ROC Curve Karşılaştırması - Logistic Regression vs Random Forest'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
                                     if (context.datasetIndex === 0) {
-                                        const point = rocData[context.dataIndex];
-                                        return `TPR: ${point.y.toFixed(3)}, FPR: ${point.x.toFixed(3)}, Threshold: ${point.threshold.toFixed(3)}`;
+                                        const point = logisticROCData[context.dataIndex];
+                                        return `Logistic - TPR: ${point.y.toFixed(3)}, FPR: ${point.x.toFixed(3)}, Threshold: ${point.threshold.toFixed(3)}`;
+                                    } else if (context.datasetIndex === 1) {
+                                        const point = fastForestROCData[context.dataIndex];
+                                        return `Random Forest - TPR: ${point.y.toFixed(3)}, FPR: ${point.x.toFixed(3)}, Threshold: ${point.threshold.toFixed(3)}`;
                                     }
                                     return context.dataset.label;
                                 }
@@ -491,8 +541,8 @@
                     },
                     elements: {
                         point: {
-                            radius: 2,
-                            hoverRadius: 5
+                            radius: 1,
+                            hoverRadius: 4
                         }
                     }
                 }
