@@ -4,10 +4,8 @@ namespace HeartMVC.Models
     {
         public HeartInputViewModel InputData { get; set; }
         
-        // FastForest Classification 
         public bool HasHeartDisease { get; set; }
         
-        // Logistic Regression  
         public float RiskProbability { get; set; }
         
         public string RiskLevel { get; set; }

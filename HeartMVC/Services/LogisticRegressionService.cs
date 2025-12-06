@@ -1,4 +1,4 @@
-using Microsoft.ML;
+﻿using Microsoft.ML;
 using HeartMVC.Models;
 
 namespace HeartMVC.Services
@@ -94,7 +94,9 @@ namespace HeartMVC.Services
             var predictionEngine = _mlContext.Model.CreatePredictionEngine<HeartData, HeartPrediction>(_model);
 
             var prediction = predictionEngine.Predict(heartData);
-            
+
+            // prediction.Score xam dəyərdir. Score = w1*x1 + w2*x2 + ... + wN*xN + bias
+            // Onu ehtimala çevirmək üçün sigmoid funksiyasından istifadə edirik
             float probability = 1.0f / (1.0f + (float)Math.Exp(-prediction.Score));
             
             return probability;

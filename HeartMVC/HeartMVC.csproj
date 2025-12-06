@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Content Remove="wwwroot\Data\heart.csv" />
-    <Content Remove="wwwroot\Data\heart_model.zip" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,7 +17,6 @@
 
   <ItemGroup>
     <None Include="wwwroot\Data\heart.csv" />
-    <None Include="wwwroot\Data\heart_model.zip" />
   </ItemGroup>
 
   <ItemGroup>

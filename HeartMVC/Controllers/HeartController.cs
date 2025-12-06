@@ -99,5 +99,24 @@ namespace HeartMVC.Controllers
                 return View(errorResult);
             }
         }
+
+        public async Task<IActionResult> Analytics()
+        {
+            try
+            {
+                var analyticsService = HttpContext.RequestServices.GetRequiredService<AdvancedAnalyticsService>();
+                var analyticsResult = await analyticsService.PerformAdvancedAnalysisAsync();
+                return View(analyticsResult);
+            }
+            catch (Exception ex)
+            {
+                var errorResult = new AdvancedAnalyticsViewModel
+                {
+                    HasError = true,
+                    ErrorMessage = $"Gelişmiş analiz sırasında beklenmeyen bir hata oluştu: {ex.Message}"
+                };
+                return View(errorResult);
+            }
+        }
     }
 }

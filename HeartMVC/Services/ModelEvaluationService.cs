@@ -73,10 +73,28 @@ namespace HeartMVC.Services
         {
             try
             {
-                var model = _mlContext.Model.Load(_fastForestModelPath, out _);
+                // burda train edilmiş modeli yükləyirik rama
+                ITransformer model = _mlContext.Model.Load(_fastForestModelPath, out _);
 
-                var predictions = model.Transform(testData);
+                // test datasını modeldən keçiririk. Hər sətir üçün PredictedLabel, Score və Probability hesablanır.
+                IDataView predictions = model.Transform(testData);
 
+                /*
+                 **`EvaluateNonCalibrated` ne demek?**
+            - **Calibrated**: Olasılık değerleri düzeltilmiş (normalize edilmiş)
+            - **NonCalibrated**: Ham olasılıklar (Random Forest'ta genelde bu kullanılır)
+            
+            **Hangi metrikleri hesaplar?**
+            
+            | Metrik | Açıklama | Formül |
+            |--------|----------|--------|
+            | **Accuracy** | Doğru tahmin oranı | (TP + TN) / Total |
+            | **Precision** | Pozitif dediğinde ne kadar doğru? | TP / (TP + FP) |
+            | **Recall (Sensitivity)** | Gerçek hastaları yakalama oranı | TP / (TP + FN) |
+            | **F1-Score** | Precision ve Recall'un dengesi | 2 × (P × R) / (P + R) |
+            | **AUC (ROC)** | Modelin ayırt etme gücü | 0.5-1.0 arası |
+                    1
+                 */
                 var metrics = _mlContext.BinaryClassification.EvaluateNonCalibrated(predictions);
 
                 var confusionMatrix = ExtractConfusionMatrix(metrics.ConfusionMatrix);
@@ -101,11 +119,11 @@ namespace HeartMVC.Services
         {
             try
             {
-                var model = _mlContext.Model.Load(_logisticModelPath, out _);
+                ITransformer model = _mlContext.Model.Load(_logisticModelPath, out _);
 
-                var predictions = model.Transform(testData);
+                IDataView predictions = model.Transform(testData);
 
-                var metrics = _mlContext.BinaryClassification.EvaluateNonCalibrated(predictions);
+                var metrics = _mlContext.BinaryClassification.Evaluate(predictions);
 
                 var confusionMatrix = ExtractConfusionMatrix(metrics.ConfusionMatrix);
 

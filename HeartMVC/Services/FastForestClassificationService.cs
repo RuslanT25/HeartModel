@@ -1,4 +1,4 @@
-using Microsoft.ML;
+﻿using Microsoft.ML;
 using Microsoft.ML.Trainers.FastTree;
 using HeartMVC.Models;
 
@@ -35,6 +35,7 @@ namespace HeartMVC.Services
         {
             await Task.Run(() =>
             {
+                // IDataview pandasdakı dataframe kimidir. Meqsedi məlumatları yükləməkdir
                 IDataView dataView = _mlContext.Data.LoadFromTextFile<HeartData>(
                     _dataPath,
                     hasHeader: true,
@@ -43,6 +44,7 @@ namespace HeartMVC.Services
                 var split = _mlContext.Data.TrainTestSplit(dataView, testFraction: 0.2);
                 var trainSet = split.TrainSet;
 
+                // Feauture vector qurur columnlardakı dəyərləri birləşdirir
                 var pipeline = _mlContext.Transforms.Concatenate(
                         "Features",
                         nameof(HeartData.Age),

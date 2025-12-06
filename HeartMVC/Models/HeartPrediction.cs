@@ -10,5 +10,8 @@ namespace HeartMVC.Models
         public float Score { get; set; }
         
         public float Probability { get; set; }
+        
+        // For ROC curve generation
+        public bool Label { get; set; }
     }
 }

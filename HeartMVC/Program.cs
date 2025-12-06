@@ -12,6 +12,7 @@ namespace HeartMVC
             builder.Services.AddScoped<FastForestClassificationService>();
             builder.Services.AddScoped<LogisticRegressionService>();
             builder.Services.AddScoped<ModelEvaluationService>();
+            builder.Services.AddScoped<AdvancedAnalyticsService>();
 
             var app = builder.Build();
 
