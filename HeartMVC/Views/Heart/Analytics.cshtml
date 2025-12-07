@@ -163,6 +163,75 @@
             </div>
         </div>
 
+        <!-- Calibration Curve Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0">
+                            <i class="fas fa-balance-scale me-2"></i>
+                            Calibration Curve Analysis - Probability Doğruluğu
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <canvas id="calibrationCurveChart" width="600" height="400"></canvas>
+                            </div>
+                            <div class="col-lg-4">
+                                <!-- Calibration Metrics -->
+                                <div class="card border-warning mb-3">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h6 class="mb-0">Calibration Metrikleri</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <strong>Logistic Regression:</strong>
+                                            <br>
+                                            <span class="badge bg-@GetCalibrationColor(Model.LogisticCalibrationScore) fs-6">
+                                                Brier Score: @Model.LogisticCalibrationScore.ToString("F4")
+                                            </span>
+                                        </div>
+                                        <div class="mb-3">
+                                            <strong>Random Forest:</strong>
+                                            <br>
+                                            <span class="badge bg-@GetCalibrationColor(Model.FastForestCalibrationScore) fs-6">
+                                                Brier Score: @Model.FastForestCalibrationScore.ToString("F4")
+                                            </span>
+                                        </div>
+                                        <div class="alert alert-warning">
+                                            <small>
+                                                <strong>En İyi Calibration:</strong><br>
+                                                @if (Model.LogisticCalibrationScore < Model.FastForestCalibrationScore)
+                                                {
+                                                    <span class="text-info">Logistic Regression</span>
+                                                    <br><small>Daha gerçekçi probability tahminleri</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-success">Random Forest</span>
+                                                    <br><small>Daha gerçekçi probability tahminleri</small>
+                                                }
+                                            </small>
+                                        </div>
+                                        <div class="alert alert-info">
+                                            <small>
+                                                <strong>Calibration Nedir?</strong><br>
+                                                Model %70 risk dediğinde, gerçekten 100 kişiden 70'inde hastalık var mı?
+                                                <br><br>
+                                                <strong>Perfect Calibration:</strong> Diagonal çizgi<br>
+                                                <strong>Brier Score:</strong> 0'a yakın = daha iyi
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Performance Timing Section -->
         <div class="row mb-4">
             <div class="col-12">
@@ -394,6 +463,14 @@
         if (auc >= 0.6) return "Zayıf sınıflandırma performansı";
         return "Çok zayıf sınıflandırma performansı";
     }
+
+    string GetCalibrationColor(double brierScore)
+    {
+        if (brierScore <= 0.1) return "success"; // Excellent calibration
+        if (brierScore <= 0.2) return "info";    // Good calibration
+        if (brierScore <= 0.3) return "warning"; // Fair calibration
+        return "danger"; // Poor calibration
+    }
 }
 
 @section Scripts {
@@ -543,6 +620,112 @@
                         point: {
                             radius: 1,
                             hoverRadius: 4
+                        }
+                    }
+                }
+            });
+
+            // Calibration Curve Chart
+            const calibrationCtx = document.getElementById('calibrationCurveChart').getContext('2d');
+            const logisticCalibrationData = @Html.Raw(Json.Serialize(Model.LogisticCalibrationData.Select(c => new { 
+                x = c.MeanPredictedProbability, 
+                y = c.ActualPositiveRate,
+                binCount = c.BinCount,
+                binStart = c.BinStart,
+                binEnd = c.BinEnd
+            })));
+
+            const fastForestCalibrationData = @Html.Raw(Json.Serialize(Model.FastForestCalibrationData.Select(c => new { 
+                x = c.MeanPredictedProbability, 
+                y = c.ActualPositiveRate,
+                binCount = c.BinCount,
+                binStart = c.BinStart,
+                binEnd = c.BinEnd
+            })));
+
+            new Chart(calibrationCtx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Logistic Regression (Brier: @Model.LogisticCalibrationScore.ToString("F4"))',
+                        data: logisticCalibrationData,
+                        borderColor: 'rgba(13, 202, 240, 1)',
+                        backgroundColor: 'rgba(13, 202, 240, 0.2)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }, {
+                        label: 'Random Forest (Brier: @Model.FastForestCalibrationScore.ToString("F4"))',
+                        data: fastForestCalibrationData,
+                        borderColor: 'rgba(25, 135, 84, 1)',
+                        backgroundColor: 'rgba(25, 135, 84, 0.2)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }, {
+                        label: 'Perfect Calibration',
+                        data: [{x: 0, y: 0}, {x: 1, y: 1}],
+                        borderColor: 'rgba(220, 53, 69, 0.8)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Calibration Curve - Predicted vs Actual Probability'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.datasetIndex === 0) {
+                                        const point = logisticCalibrationData[context.dataIndex];
+                                        return `Logistic - Predicted: ${point.x.toFixed(3)}, Actual: ${point.y.toFixed(3)}, Samples: ${point.binCount}`;
+                                    } else if (context.datasetIndex === 1) {
+                                        const point = fastForestCalibrationData[context.dataIndex];
+                                        return `Random Forest - Predicted: ${point.x.toFixed(3)}, Actual: ${point.y.toFixed(3)}, Samples: ${point.binCount}`;
+                                    }
+                                    return 'Perfect Calibration Line';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            min: 0,
+                            max: 1,
+                            title: {
+                                display: true,
+                                text: 'Mean Predicted Probability'
+                            }
+                        },
+                        y: {
+                            min: 0,
+                            max: 1,
+                            title: {
+                                display: true,
+                                text: 'Actual Positive Rate'
+                            }
+                        }
+                    },
+                    elements: {
+                        point: {
+                            radius: 6,
+                            hoverRadius: 8
                         }
                     }
                 }

@@ -58,6 +58,8 @@ namespace HeartMVC.Services
                 result.FeatureImportance = await Task.Run(() => CalculateFeatureImportance(trainData, testData));
                 result.ROCCurveData = await Task.Run(() => GenerateLogisticRegressionROCCurveData(testData));
                 result.FastForestROCCurveData = await Task.Run(() => GenerateFastForestROCCurveData(testData));
+                result.LogisticCalibrationData = await Task.Run(() => GenerateLogisticRegressionCalibrationCurve(testData));
+                result.FastForestCalibrationData = await Task.Run(() => GenerateFastForestCalibrationCurve(testData));
                 result.TimingData = await Task.Run(() => MeasurePerformanceTiming(trainData));
                 result.DataStats = await Task.Run(() => AnalyzeDataStatistics());
 
@@ -69,6 +71,10 @@ namespace HeartMVC.Services
                 var (fastForestOptimalThreshold, fastForestAuc) = CalculateOptimalThreshold(result.FastForestROCCurveData);
                 result.FastForestOptimalThreshold = fastForestOptimalThreshold;
                 result.FastForestAUCValue = fastForestAuc;
+
+                // Calculate calibration scores (Brier Score - lower is better)
+                result.LogisticCalibrationScore = CalculateCalibrationScore(result.LogisticCalibrationData);
+                result.FastForestCalibrationScore = CalculateCalibrationScore(result.FastForestCalibrationData);
             }
             catch (Exception ex)
             {
@@ -535,6 +541,145 @@ namespace HeartMVC.Services
             return rocPoints.OrderBy(x => x.FalsePositiveRate).ToList();
         }
 
+        // Logistic Regression üçün Calibration Curve yaradır
+        // Calibration curve modelin probability tahminlərinin nə qədər dəqiq olduğunu göstərir
+        private List<CalibrationCurvePoint> GenerateLogisticRegressionCalibrationCurve(IDataView testData)
+        {
+            try
+            {
+                var model = _mlContext.Model.Load(_logisticModelPath, out _);
+                var predictions = model.Transform(testData);
+                var predictionResults = _mlContext.Data.CreateEnumerable<HeartPrediction>(predictions, false).ToList();
+
+                return CalculateCalibrationCurve(predictionResults.Select(p => new CalibrationDataPoint
+                {
+                    PredictedProbability = 1.0f / (1.0f + (float)Math.Exp(-p.Score)), // Sigmoid
+                    ActualLabel = p.Label
+                }).ToList());
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Logistic Regression calibration curve generation failed: {ex.Message}", ex);
+            }
+        }
+
+        // Random Forest üçün Calibration Curve yaradır
+        private List<CalibrationCurvePoint> GenerateFastForestCalibrationCurve(IDataView testData)
+        {
+            try
+            {
+                var model = _mlContext.Model.Load(_fastForestModelPath, out _);
+                var predictions = model.Transform(testData);
+                var predictionResults = _mlContext.Data.CreateEnumerable<FastForestPrediction>(predictions, false).ToList();
+
+                // FastForest score'larını probability'yə çevirmək
+                var scores = predictionResults.Select(p => p.Score).ToList();
+                var minScore = scores.Min();
+                var maxScore = scores.Max();
+                var scoreRange = maxScore - minScore;
+
+                var calibrationData = predictionResults.Select(p =>
+                {
+                    float probability;
+                    if (scoreRange > 0)
+                    {
+                        // Score normalization
+                        var normalizedScore = (p.Score - minScore) / scoreRange;
+                        probability = Math.Max(0, Math.Min(1, normalizedScore));
+                    }
+                    else
+                    {
+                        // Sigmoid fallback
+                        probability = 1.0f / (1.0f + (float)Math.Exp(-p.Score));
+                    }
+
+                    return new CalibrationDataPoint
+                    {
+                        PredictedProbability = probability,
+                        ActualLabel = p.Label
+                    };
+                }).ToList();
+
+                return CalculateCalibrationCurve(calibrationData);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"FastForest calibration curve generation failed: {ex.Message}", ex);
+            }
+        }
+
+        // Calibration curve hesablama (ümumi metod)
+        private List<CalibrationCurvePoint> CalculateCalibrationCurve(List<CalibrationDataPoint> data)
+        {
+            var calibrationPoints = new List<CalibrationCurvePoint>();
+            
+            // Probability'ləri 10 bin'ə bölürük (0.0-0.1, 0.1-0.2, ..., 0.9-1.0)
+            const int numberOfBins = 10;
+            
+            for (int i = 0; i < numberOfBins; i++)
+            {
+                var binStart = i / (double)numberOfBins;
+                var binEnd = (i + 1) / (double)numberOfBins;
+                
+                // Bu bin'ə aid olan prediction'ları tapırıq
+                var binData = data.Where(d => d.PredictedProbability >= binStart && 
+                                            (i == numberOfBins - 1 ? d.PredictedProbability <= binEnd : d.PredictedProbability < binEnd))
+                                 .ToList();
+                
+                if (binData.Any())
+                {
+                    // Bu bin'dəki ortalama predicted probability
+                    var meanPredictedProb = binData.Average(d => d.PredictedProbability);
+                    
+                    // Bu bin'dəki həqiqi pozitiv nisbəti
+                    var actualPositiveRate = binData.Count(d => d.ActualLabel) / (double)binData.Count;
+                    
+                    calibrationPoints.Add(new CalibrationCurvePoint
+                    {
+                        MeanPredictedProbability = meanPredictedProb,
+                        ActualPositiveRate = actualPositiveRate,
+                        BinCount = binData.Count,
+                        BinStart = binStart,
+                        BinEnd = binEnd
+                    });
+                }
+                else
+                {
+                    // Boş bin üçün default dəyər
+                    calibrationPoints.Add(new CalibrationCurvePoint
+                    {
+                        MeanPredictedProbability = (binStart + binEnd) / 2,
+                        ActualPositiveRate = (binStart + binEnd) / 2, // Perfect calibration line
+                        BinCount = 0,
+                        BinStart = binStart,
+                        BinEnd = binEnd
+                    });
+                }
+            }
+            
+            return calibrationPoints;
+        }
+
+        // Calibration quality score hesablama (Brier Score)
+        private double CalculateCalibrationScore(List<CalibrationCurvePoint> calibrationData)
+        {
+            if (!calibrationData.Any()) return 1.0; // Worst possible score
+            
+            // Brier Score = Σ(predicted_prob - actual_outcome)² / N
+            // Calibration üçün isə ortalama fərqin kvadratını hesablayırıq
+            var totalWeightedError = 0.0;
+            var totalSamples = 0;
+            
+            foreach (var point in calibrationData.Where(p => p.BinCount > 0))
+            {
+                var error = Math.Pow(point.MeanPredictedProbability - point.ActualPositiveRate, 2);
+                totalWeightedError += error * point.BinCount;
+                totalSamples += point.BinCount;
+            }
+            
+            return totalSamples > 0 ? totalWeightedError / totalSamples : 1.0;
+        }
+
         private PerformanceTimingData MeasurePerformanceTiming(IDataView trainData)
         {
             var timingData = new PerformanceTimingData();
@@ -718,6 +863,13 @@ namespace HeartMVC.Services
             var sampleData = new HeartData { Age = 50, Sex = 1, Cp = 0, Trestbps = 120, Chol = 200, Fbs = 0, Restecg = 1, Thalach = 150, Exang = 0, Oldpeak = 1.0f, Slope = 2, Ca = 0, Thal = 2 };
             predictionEngine.Predict(sampleData);
         }
+    }
+
+    // Calibration hesablaması üçün helper class
+    public class CalibrationDataPoint
+    {
+        public float PredictedProbability { get; set; }
+        public bool ActualLabel { get; set; }
     }
 
 
