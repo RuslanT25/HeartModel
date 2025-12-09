@@ -18,5 +18,7 @@ namespace HeartMVC.Models
         public double FastForestAUCValue { get; set; } // Random Forest AUC
         public double LogisticCalibrationScore { get; set; } // Logistic Regression calibration quality score
         public double FastForestCalibrationScore { get; set; } // Random Forest calibration quality score
+        public double LogisticLogLoss { get; set; } // Logistic Regression Log Loss score
+        public double FastForestLogLoss { get; set; } // Random Forest Log Loss score
     }
 }

@@ -214,13 +214,81 @@
                                                 }
                                             </small>
                                         </div>
-                                        <div class="alert alert-info">
+                                       @*  <div class="alert alert-info">
                                             <small>
                                                 <strong>Calibration Nedir?</strong><br>
                                                 Model %70 risk dediğinde, gerçekten 100 kişiden 70'inde hastalık var mı?
                                                 <br><br>
                                                 <strong>Perfect Calibration:</strong> Diagonal çizgi<br>
                                                 <strong>Brier Score:</strong> 0'a yakın = daha iyi
+                                            </small>
+                                        </div> *@
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Loss Analysis Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Log Loss Analysis - Tahmin Ceza Skoru
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <!-- Log Loss Comparison Chart -->
+                                <div class="card border-light">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">Model Log Loss Karşılaştırması</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="logLossChart" width="600" height="300"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <!-- Log Loss Metrics -->
+                                <div class="card border-danger mb-3">
+                                    <div class="card-header bg-danger text-white">
+                                        <h6 class="mb-0">Log Loss Skorları</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <strong>Logistic Regression:</strong>
+                                            <br>
+                                            <span class="badge bg-@GetLogLossColor(Model.LogisticLogLoss) fs-6">
+                                                @Model.LogisticLogLoss.ToString("F4")
+                                            </span>
+                                        </div>
+                                        <div class="mb-3">
+                                            <strong>Random Forest:</strong>
+                                            <br>
+                                            <span class="badge bg-@GetLogLossColor(Model.FastForestLogLoss) fs-6">
+                                                @Model.FastForestLogLoss.ToString("F4")
+                                            </span>
+                                        </div>
+                                        <div class="alert alert-danger">
+                                            <small>
+                                                <strong>En İyi Log Loss:</strong><br>
+                                                @if (Model.LogisticLogLoss < Model.FastForestLogLoss)
+                                                {
+                                                    <span class="text-info">Logistic Regression</span>
+                                                    <br><small>Daha düşük ceza skoru</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-success">Random Forest</span>
+                                                    <br><small>Daha düşük ceza skoru</small>
+                                                }
                                             </small>
                                         </div>
                                     </div>
@@ -470,6 +538,14 @@
         if (brierScore <= 0.2) return "info";    // Good calibration
         if (brierScore <= 0.3) return "warning"; // Fair calibration
         return "danger"; // Poor calibration
+    }
+
+    string GetLogLossColor(double logLoss)
+    {
+        if (logLoss <= 0.3) return "success"; // Excellent Log Loss
+        if (logLoss <= 0.5) return "info";    // Good Log Loss
+        if (logLoss <= 0.7) return "warning"; // Fair Log Loss
+        return "danger"; // Poor Log Loss
     }
 }
 
@@ -726,6 +802,87 @@
                         point: {
                             radius: 6,
                             hoverRadius: 8
+                        }
+                    }
+                }
+            });
+
+            // Log Loss Comparison Chart
+            const logLossCtx = document.getElementById('logLossChart').getContext('2d');
+            
+            new Chart(logLossCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Logistic Regression', 'Random Forest'],
+                    datasets: [{
+                        label: 'Log Loss Score (Lower is Better)',
+                        data: [@Model.LogisticLogLoss.ToString("F4"), @Model.FastForestLogLoss.ToString("F4")],
+                        backgroundColor: [
+                            'rgba(13, 202, 240, 0.8)',
+                            'rgba(25, 135, 84, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(13, 202, 240, 1)',
+                            'rgba(25, 135, 84, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Log Loss Karşılaştırması - Tahmin Ceza Skorları'
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    const modelName = context.label;
+                                    let interpretation = '';
+                                    
+                                    if (value <= 0.3) {
+                                        interpretation = ' (Mükemmel)';
+                                    } else if (value <= 0.5) {
+                                        interpretation = ' (İyi)';
+                                    } else if (value <= 0.7) {
+                                        interpretation = ' (Orta)';
+                                    } else {
+                                        interpretation = ' (Zayıf)';
+                                    }
+                                    
+                                    return `${modelName}: ${value.toFixed(4)}${interpretation}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Log Loss Score'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(3);
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'ML Models'
+                            }
+                        }
+                    },
+                    elements: {
+                        bar: {
+                            borderRadius: 8
                         }
                     }
                 }

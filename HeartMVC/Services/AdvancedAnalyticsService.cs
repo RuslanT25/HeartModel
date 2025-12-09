@@ -75,6 +75,10 @@ namespace HeartMVC.Services
                 // Calculate calibration scores (Brier Score - lower is better)
                 result.LogisticCalibrationScore = CalculateCalibrationScore(result.LogisticCalibrationData);
                 result.FastForestCalibrationScore = CalculateCalibrationScore(result.FastForestCalibrationData);
+
+                // Calculate Log Loss scores (lower is better)
+                result.LogisticLogLoss = await Task.Run(() => CalculateLogisticRegressionLogLoss(testData));
+                result.FastForestLogLoss = await Task.Run(() => CalculateFastForestLogLoss(testData));
             }
             catch (Exception ex)
             {
@@ -376,7 +380,7 @@ namespace HeartMVC.Services
         }
 
         // Logistic Regression üçün ROC əyrisi məlumat nöqtələri yaradır
-        // ROC əyrisi modelin fərqli həssaslıq səviyyələrində necə performans göstərdiyini göstərir.
+        // ROC Curve, bir classification modelinin nə qədər yaxşı işlədiyini göstərən əyridir.
         // Model həqiqətən xəstə olanları nə qədər yaxşı tapır? (True Positive Rate)
         // Model sağlam insanları yanlış xəstə deyir nə qədər? (False Positive Rate)
         private List<ROCCurvePoint> GenerateLogisticRegressionROCCurveData(IDataView testData)
@@ -462,11 +466,7 @@ namespace HeartMVC.Services
 
                     foreach (var prediction in predictionResults)
                     {
-                        bool actualPositive = prediction.Label;
-
-                        // FastForest score'unu probability'yə çevirmək üçün iki yöntem:
-                        // 1. Sigmoid function (daha ümumi)
-                        // 2. Score normalization (FastForest üçün daha uyğun)
+                        bool actualPositive = prediction.Label; 
                         
                         float probability;
                         if (scoreRange > 0)
@@ -608,7 +608,9 @@ namespace HeartMVC.Services
             }
         }
 
-        // Calibration curve hesablama (ümumi metod)
+        // 1. **Modelin ehtimal təxminlərinin dəqiqliyini ölçür**
+        // 2. **Over-confident və ya under-confident olduğunu göstərir**
+        // 3. **Klinik qərarlarda etibarlılığı qiymətləndirir**
         private List<CalibrationCurvePoint> CalculateCalibrationCurve(List<CalibrationDataPoint> data)
         {
             var calibrationPoints = new List<CalibrationCurvePoint>();
@@ -626,7 +628,7 @@ namespace HeartMVC.Services
                                             (i == numberOfBins - 1 ? d.PredictedProbability <= binEnd : d.PredictedProbability < binEnd))
                                  .ToList();
                 
-                if (binData.Any())
+                if (binData.Count != 0)
                 {
                     // Bu bin'dəki ortalama predicted probability
                     var meanPredictedProb = binData.Average(d => d.PredictedProbability);
@@ -660,24 +662,150 @@ namespace HeartMVC.Services
             return calibrationPoints;
         }
 
-        // Calibration quality score hesablama (Brier Score)
+        // Bu funksiya calibration score'u hesablayır. Daha aşağı score daha yaxşı kalibrasiyanı göstərir.
         private double CalculateCalibrationScore(List<CalibrationCurvePoint> calibrationData)
         {
-            if (!calibrationData.Any()) return 1.0; // Worst possible score
-            
-            // Brier Score = Σ(predicted_prob - actual_outcome)² / N
-            // Calibration üçün isə ortalama fərqin kvadratını hesablayırıq
+            if (calibrationData.Count == 0) return 1.0; // Worst possible score
+
+            /* 
+                Brier Score = Σ(predicted_prob - actual_outcome) / N
+                Bizim model üçün Σⱼ₌₁¹⁰ [(p̄ⱼ - ȳⱼ)² × nⱼ] / N
+                p̄ⱼ = bin'dəki ortalama predicted probability
+                ȳⱼ = bin'dəki actual positive rate
+                nⱼ = bin'dəki nümunə sayı
+                N = ümumi nümunə sayı
+                Calibration üçün isə ortalama fərqin kvadratını hesablayırıq
+            */
             var totalWeightedError = 0.0;
             var totalSamples = 0;
             
             foreach (var point in calibrationData.Where(p => p.BinCount > 0))
             {
+                // error modelin o bin üçün proqnozlarının nə qədər səhv olduğunu göstərir
+                // error = (predicted_prob - actual_rate)²
                 var error = Math.Pow(point.MeanPredictedProbability - point.ActualPositiveRate, 2);
+                // weighted error = error * bin'dəki nümunə sayı
                 totalWeightedError += error * point.BinCount;
                 totalSamples += point.BinCount;
             }
             
             return totalSamples > 0 ? totalWeightedError / totalSamples : 1.0;
+        }
+
+        // Logistic Regression üçün Log Loss hesablama
+        // Log Loss = -1/N * Σ[y*log(p) + (1-y)*log(1-p)]
+        // y = həqiqi etiket (0 və ya 1), p = proqnozlaşdırılan ehtimal
+        private double CalculateLogisticRegressionLogLoss(IDataView testData)
+        {
+            try
+            {
+                var model = _mlContext.Model.Load(_logisticModelPath, out _);
+                var predictions = model.Transform(testData);
+                var predictionResults = _mlContext.Data.CreateEnumerable<HeartPrediction>(predictions, false).ToList();
+
+                double totalLogLoss = 0.0;
+                int validPredictions = 0;
+
+                foreach (var prediction in predictionResults)
+                {
+                    // Score'u probability'yə çevirmək (sigmoid function)
+                    var probability = 1.0 / (1.0 + Math.Exp(-prediction.Score));
+
+                    /*
+                        Model 100% əmin olarsa:
+                        probability = 1.0
+                        log(1-p) = log(0) = ERROR!
+
+                        Model 0% əmin olarsa:   
+                        probability = 0.0
+                        log(p) = log(0) = ERROR!
+                    */
+                    const double epsilon = 1e-15; // = 0.000000000000001
+                    probability = Math.Max(epsilon, Math.Min(1 - epsilon, probability));
+
+                    // Həqiqi etiket (0 və ya 1)
+                    double actualLabel = prediction.Label ? 1.0 : 0.0;
+
+                    /*
+                            LogLoss = -1/N × Σᵢ₌₁ᴺ [yᵢ × log(pᵢ) + (1-yᵢ) × log(1-pᵢ)]
+                            N  = cəmi sample sayı
+                            yᵢ = i-ci sample üçün həqiqi etiket (0 və ya 1)
+                            pᵢ = i-ci sample üçün proqnoz ehtimalı (0-1 arası)
+                     */
+                    var logLoss = -(actualLabel * Math.Log(probability) + (1 - actualLabel) * Math.Log(1 - probability));
+                    
+                    if (!double.IsNaN(logLoss) && !double.IsInfinity(logLoss))
+                    {
+                        totalLogLoss += logLoss;
+                        validPredictions++;
+                    }
+                }
+
+                return validPredictions > 0 ? totalLogLoss / validPredictions : double.MaxValue;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Logistic Regression Log Loss calculation failed: {ex.Message}", ex);
+            }
+        }
+
+        // Random Forest üçün Log Loss hesablama
+        private double CalculateFastForestLogLoss(IDataView testData)
+        {
+            try
+            {
+                var model = _mlContext.Model.Load(_fastForestModelPath, out _);
+                var predictions = model.Transform(testData);
+                var predictionResults = _mlContext.Data.CreateEnumerable<FastForestPrediction>(predictions, false).ToList();
+
+                // FastForest score'larını probability'yə çevirmək üçün normalization
+                var scores = predictionResults.Select(p => p.Score).ToList();
+                var minScore = scores.Min();
+                var maxScore = scores.Max();
+                var scoreRange = maxScore - minScore;
+
+                double totalLogLoss = 0.0;
+                int validPredictions = 0;
+
+                foreach (var prediction in predictionResults)
+                {
+                    // Score'u probability'yə çevirmək
+                    double probability;
+                    if (scoreRange > 0)
+                    {
+                        // Score normalization yöntemi
+                        var normalizedScore = (prediction.Score - minScore) / scoreRange;
+                        probability = Math.Max(0, Math.Min(1, normalizedScore));
+                    }
+                    else
+                    {
+                        // Sigmoid function fallback
+                        probability = 1.0 / (1.0 + Math.Exp(-prediction.Score));
+                    }
+
+                    // Probability'ni [epsilon, 1-epsilon] aralığında saxlamaq
+                    const double epsilon = 1e-15;
+                    probability = Math.Max(epsilon, Math.Min(1 - epsilon, probability));
+
+                    // Həqiqi etiket (0 və ya 1)
+                    double actualLabel = prediction.Label ? 1.0 : 0.0;
+
+                    // Log Loss düsturu
+                    var logLoss = -(actualLabel * Math.Log(probability) + (1 - actualLabel) * Math.Log(1 - probability));
+                    
+                    if (!double.IsNaN(logLoss) && !double.IsInfinity(logLoss))
+                    {
+                        totalLogLoss += logLoss;
+                        validPredictions++;
+                    }
+                }
+
+                return validPredictions > 0 ? totalLogLoss / validPredictions : double.MaxValue;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"FastForest Log Loss calculation failed: {ex.Message}", ex);
+            }
         }
 
         private PerformanceTimingData MeasurePerformanceTiming(IDataView trainData)

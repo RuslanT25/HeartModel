@@ -513,4 +513,95 @@ dvanced Analytics Dashboard Styles */
 
 .table-responsive::-webkit-scrollbar-thumb:hover {
     background: #555;
+}/* Log
+ Loss Analysis Styles */
+.log-loss-section {
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+.log-loss-chart-container {
+    background: white;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.log-loss-explanation {
+    background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.log-loss-example {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.log-loss-example .text-success {
+    color: #38a169 !important;
+}
+
+.log-loss-example .text-warning {
+    color: #d69e2e !important;
+}
+
+.log-loss-example .text-danger {
+    color: #e53e3e !important;
+}
+
+/* Log Loss Badge Styling */
+.badge.bg-success {
+    background: linear-gradient(45deg, #38a169, #48bb78) !important;
+}
+
+.badge.bg-info {
+    background: linear-gradient(45deg, #3182ce, #4299e1) !important;
+}
+
+.badge.bg-warning {
+    background: linear-gradient(45deg, #d69e2e, #ed8936) !important;
+    color: #1a202c !important;
+}
+
+.badge.bg-danger {
+    background: linear-gradient(45deg, #e53e3e, #f56565) !important;
+}
+
+/* Enhanced Alert Styling */
+.alert-danger {
+    background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+    border: 1px solid #fc8181;
+    color: #742a2a;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #bee3f8 0%, #90cdf4 100%);
+    border: 1px solid #63b3ed;
+    color: #2c5282;
+}
+
+/* Chart Container Enhancements */
+.chart-container {
+    transition: transform 0.3s ease;
+}
+
+.chart-container:hover {
+    transform: translateY(-2px);
+}
+
+/* Responsive adjustments for Log Loss */
+@media (max-width: 768px) {
+    .log-loss-section {
+        padding: 1rem;
+    }
+    
+    .log-loss-explanation {
+        margin-top: 1rem;
+    }
+    
+    .log-loss-example {
+        font-size: 0.8rem;
+    }
 }
