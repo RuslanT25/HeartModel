@@ -379,7 +379,6 @@ namespace HeartMVC.Services
             return importanceData;
         }
 
-        // Logistic Regression üçün ROC əyrisi məlumat nöqtələri yaradır
         // ROC Curve, bir classification modelinin nə qədər yaxşı işlədiyini göstərən əyridir.
         // Model həqiqətən xəstə olanları nə qədər yaxşı tapır? (True Positive Rate)
         // Model sağlam insanları yanlış xəstə deyir nə qədər? (False Positive Rate)
@@ -403,6 +402,7 @@ namespace HeartMVC.Services
 
                     foreach (var prediction in predictionResults)
                     {
+                        // bu actualPositive modelin həqiqət etiketidir (yəni, xəstə olub-olmaması)
                         bool actualPositive = prediction.Label;
 
                         // bu düsturla score-dan probability hesablanır(sigmoid funksiyası)
@@ -411,9 +411,16 @@ namespace HeartMVC.Services
                         // əgər probability threshold-dan böyük və ya bərabərdirsə, müsbət proqnoz verilir
                         bool predictedPositive = probability >= threshold;
 
+                        // əgər həqiqətən xəstədirsə və model də xəstə proqnoz veribsə, TP artır
                         if (actualPositive && predictedPositive) tp++;
+
+                        // əgər həqiqətən sağlamdırsa, amma model xəstə proqnoz veribsə, FP artır
                         else if (!actualPositive && predictedPositive) fp++;
+
+                        // əgər həqiqətən sağlamdırsa və model də sağlam proqnoz veribsə, TN artır
                         else if (!actualPositive && !predictedPositive) tn++;
+
+                        // əgər həqiqətən xəstədirsə, amma model sağlam proqnoz veribsə, FN artır
                         else if (actualPositive && !predictedPositive) fn++;
                     }
 
@@ -508,6 +515,39 @@ namespace HeartMVC.Services
                 // Əgər FastForest ROC curve yaratmaq mümkün deyilsə, mock data qaytarırıq
                 return GenerateMockROCCurveForFastForest();
             }
+        }
+
+        private (double optimalThreshold, double auc) CalculateOptimalThreshold(List<ROCCurvePoint> rocPoints)
+        {
+            /*
+               ### **Hər bir trapezoid üçün:**
+                ```
+                width = FPR[i] - FPR[i-1]
+                height = (TPR[i] + TPR[i-1]) / 2
+                trapezoid_sahəsi = width × height
+                ```
+                
+                ### **Ümumi AUC:**
+                ```
+                AUC = Σ (width × height)
+                AUC = trapezoid₁ + trapezoid₂ + ... + trapezoid₅₀
+             */
+            double auc = 0;
+            for (int i = 1; i < rocPoints.Count; i++)
+            {
+                var width = rocPoints[i].FalsePositiveRate - rocPoints[i - 1].FalsePositiveRate;
+                var height = (rocPoints[i].TruePositiveRate + rocPoints[i - 1].TruePositiveRate) / 2;
+                auc += width * height;
+            }
+
+            // (0,1) nöqtəsinə ən yaxın nöqtəni tapırıq
+            // Məsafə = √[(FPR - 0)² +(TPR - 1)²] 
+            // burda her bir roc nöqtəsi üçün məsafə hesablanır və ən kiçik məsafəyə sahib nöqtə seçilir
+            var optimalPoint = rocPoints
+                .OrderBy(p => Math.Sqrt(Math.Pow(p.FalsePositiveRate, 2) + Math.Pow(1 - p.TruePositiveRate, 2)))
+                .First();
+
+            return (optimalPoint.Threshold, auc);
         }
 
         // FastForest üçün mock ROC curve data (fallback)
@@ -610,7 +650,19 @@ namespace HeartMVC.Services
 
         // 1. **Modelin ehtimal təxminlərinin dəqiqliyini ölçür**
         // 2. **Over-confident və ya under-confident olduğunu göstərir**
+        /*
+            Over-confident nümunə:
+            Model: "90% ehtimal xəstəsiniz"
+            Gerçək: 100 nəfərdən 60-ı xəstədir
+            Model çox əmindir, amma səhv edir!
+
+            Under-confident nümunə:
+            Model: "40% ehtimal xəstəsiniz"
+            Gerçək: 100 nəfərdən 70-i xəstədir
+            Model çox ehtiyatlıdır!
+         */
         // 3. **Klinik qərarlarda etibarlılığı qiymətləndirir**
+
         private List<CalibrationCurvePoint> CalculateCalibrationCurve(List<CalibrationDataPoint> data)
         {
             var calibrationPoints = new List<CalibrationCurvePoint>();
@@ -632,8 +684,28 @@ namespace HeartMVC.Services
                 {
                     // Bu bin'dəki ortalama predicted probability
                     var meanPredictedProb = binData.Average(d => d.PredictedProbability);
-                    
+
                     // Bu bin'dəki həqiqi pozitiv nisbəti
+                    // actualPositiveRate = həqiqətən xəstə olanların sayı / ümumi nümunə sayı
+                    // actualPositiveRate o demekdir ki bu bin üçün modelin proqnozları nə qədər doğru çıxıb
+                    /*
+                        **Hesablama:**
+                       
+                        Bin 7 (0.7-0.8):
+                          Hasta 10: true  ✓
+                          Hasta 23: true  ✓
+                          Hasta 45: false ✗
+                          Hasta 67: true  ✓
+                          Hasta 89: true  ✓
+                        
+                        Xəstə sayı = 4
+                        Cəmi = 5
+                        
+                        actualPositiveRate = 4 / 5 = 0.8
+                        
+                        Gerçəkdə 80% xəstədir
+                     */
+
                     var actualPositiveRate = binData.Count(d => d.ActualLabel) / (double)binData.Count;
                     
                     calibrationPoints.Add(new CalibrationCurvePoint
@@ -662,13 +734,13 @@ namespace HeartMVC.Services
             return calibrationPoints;
         }
 
-        // Bu funksiya calibration score'u hesablayır. Daha aşağı score daha yaxşı kalibrasiyanı göstərir.
+        // Calibration score kalibrasiyanın nə qədər yaxşı olduğunu ölçür. Ne qeder aşağı olsa, o qeder yaxşıdır.
         private double CalculateCalibrationScore(List<CalibrationCurvePoint> calibrationData)
         {
             if (calibrationData.Count == 0) return 1.0; // Worst possible score
 
             /* 
-                Brier Score = Σ(predicted_prob - actual_outcome) / N
+                Brier Score = Σ(predicted_prob - actual_outcome)^2 / N
                 Bizim model üçün Σⱼ₌₁¹⁰ [(p̄ⱼ - ȳⱼ)² × nⱼ] / N
                 p̄ⱼ = bin'dəki ortalama predicted probability
                 ȳⱼ = bin'dəki actual positive rate
@@ -692,7 +764,42 @@ namespace HeartMVC.Services
             return totalSamples > 0 ? totalWeightedError / totalSamples : 1.0;
         }
 
-        // Logistic Regression üçün Log Loss hesablama
+
+
+        /*
+         
+        Log Loss modelin tahminlerini doğrudan sayısal bir değerle ölçer ve bu değerin düşük olması, 
+        modelin doğru tahminler yaptığı anlamına gelir. Ama sadece doğru sınıf için verilen olasılığı değerlendirir.
+
+        Hasta 1:
+          Model deyir: 95% xəstə (p = 0.95)
+          Gerçək: Xəstə (y = 1)
+          
+          Loss = -log(0.95) = 0.051
+          Yorum: Əmin və doğru, az cəza ✓
+        
+        Hasta 2:
+          Model deyir: 60% xəstə (p = 0.60)
+          Gerçək: Xəstə (y = 1)
+          
+          Loss = -log(0.60) = 0.511
+          Yorum: Az əmin amma doğru, orta cəza ⚠️
+        
+        Hasta 3:
+          Model deyir: 30% xəstə (p = 0.30)
+          Gerçək: Sağlam (y = 0)
+          
+          Loss = -log(1-0.30) = -log(0.70) = 0.357
+          Yorum: Doğru, orta cəza ✓
+        
+        Hasta 4:
+          Model deyir: 85% xəstə (p = 0.85)
+          Gerçək: Sağlam (y = 0)
+          
+          Loss = -log(1-0.85) = -log(0.15) = 1.897
+          Yorum: Çox əmin amma YANLIŞDIR, böyük cəza ✗✗
+         */
+
         // Log Loss = -1/N * Σ[y*log(p) + (1-y)*log(1-p)]
         // y = həqiqi etiket (0 və ya 1), p = proqnozlaşdırılan ehtimal
         private double CalculateLogisticRegressionLogLoss(IDataView testData)
@@ -916,38 +1023,6 @@ namespace HeartMVC.Services
             stats.OutlierCounts[columnName] = outliers;
         }
 
-        private (double optimalThreshold, double auc) CalculateOptimalThreshold(List<ROCCurvePoint> rocPoints)
-        {
-            /*
-               ### **Hər bir trapezoid üçün:**
-                ```
-                width = FPR[i] - FPR[i-1]
-                height = (TPR[i] + TPR[i-1]) / 2
-                trapezoid_sahəsi = width × height
-                ```
-                
-                ### **Ümumi AUC:**
-                ```
-                AUC = Σ (width × height)
-                AUC = trapezoid₁ + trapezoid₂ + ... + trapezoid₅₀
-             */
-            double auc = 0;
-            for (int i = 1; i < rocPoints.Count; i++)
-            {
-                var width = rocPoints[i].FalsePositiveRate - rocPoints[i - 1].FalsePositiveRate;
-                var height = (rocPoints[i].TruePositiveRate + rocPoints[i - 1].TruePositiveRate) / 2;
-                auc += width * height;
-            }
-
-            // (0,1) nöqtəsinə ən yaxın nöqtəni tapırıq
-            // Məsafə = √[(FPR - 0)² +(TPR - 1)²] 
-            var optimalPoint = rocPoints
-                .OrderBy(p => Math.Sqrt(Math.Pow(p.FalsePositiveRate, 2) + Math.Pow(1 - p.TruePositiveRate, 2)))
-                .First();
-
-            return (optimalPoint.Threshold, auc);
-        }
-
         private void TrainFastForestModel(IDataView trainData)
         {
             var pipeline = _mlContext.Transforms.Concatenate("Features",
@@ -999,6 +1074,4 @@ namespace HeartMVC.Services
         public float PredictedProbability { get; set; }
         public bool ActualLabel { get; set; }
     }
-
-
 }
