@@ -7,6 +7,7 @@ namespace HeartMVC.Models
         public bool HasHeartDisease { get; set; }
         
         public float RiskProbability { get; set; }
+        public float FastForestProbability { get; set; }
         
         public string RiskLevel { get; set; }
         public string RiskColor { get; set; }

@@ -45,12 +45,14 @@ namespace HeartMVC.Controllers
             {
                 var hasHeartDisease = _fastForestService.PredictClassification(model);
                 var riskProbability = _logisticService.PredictProbability(model);
+                var fastForestProbability = _fastForestService.PredictProbability(model);
 
                 var result = new HeartResultViewModel
                 {
                     InputData = model,
                     HasHeartDisease = hasHeartDisease,
                     RiskProbability = riskProbability * 100, // Convert to percentage
+                    FastForestProbability = fastForestProbability * 100, // Convert to percentage
                     ClassificationResult = hasHeartDisease ? "Risk Var" : "Risk Yok"
                 };
 

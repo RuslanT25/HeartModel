@@ -34,7 +34,8 @@
                                     }
                                 </div>
                                 <h2 class="text-@Model.RiskColor">@Model.RiskLevel</h2>
-                                <h4 class="text-muted">Risk Oranı: %@Model.RiskProbability.ToString("F1")</h4>
+                                <h4 class="text-muted">LR Risk: %@Model.RiskProbability.ToString("F1")</h4>
+                                <h5 class="text-muted">RF Risk: %@Model.FastForestProbability.ToString("F1")</h5>
                                 <h5 class="mt-3">
                                     <span class="badge bg-@(Model.HasHeartDisease ? "danger" : "success") fs-6">
                                         @Model.ClassificationResult
@@ -43,13 +44,37 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="progress mb-3" style="height: 30px;">
-                                <div class="progress-bar bg-@Model.RiskColor" role="progressbar" 
-                                     style="width: @Model.RiskProbability.ToString("F1")%" 
-                                     aria-valuenow="@Model.RiskProbability" aria-valuemin="0" aria-valuemax="100">
-                                    %@Model.RiskProbability.ToString("F1")
+                            @{
+                                var averageRisk = (Model.RiskProbability + Model.FastForestProbability) / 2;
+                            }
+                            <div class="mb-2">
+                                <small class="text-muted">Logistic Regression (%@Model.RiskProbability.ToString("F1"))</small>
+                                <div class="progress mb-1" style="height: 20px;">
+                                    <div class="progress-bar bg-info" role="progressbar" 
+                                         style="width: @Model.RiskProbability.ToString("F1")%" 
+                                         aria-valuenow="@Model.RiskProbability" aria-valuemin="0" aria-valuemax="100">
+                                    </div>
                                 </div>
                             </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Random Forest (%@Model.FastForestProbability.ToString("F1"))</small>
+                                <div class="progress mb-1" style="height: 20px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" 
+                                         style="width: @Model.FastForestProbability.ToString("F1")%" 
+                                         aria-valuenow="@Model.FastForestProbability" aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+                            @* <div class="mb-3">
+                                <strong>Ortalama Risk: %@averageRisk.ToString("F1")</strong>
+                                <div class="progress" style="height: 25px;">
+                                    <div class="progress-bar bg-@Model.RiskColor" role="progressbar" 
+                                         style="width: @averageRisk.ToString("F1")%" 
+                                         aria-valuenow="@averageRisk" aria-valuemin="0" aria-valuemax="100">
+                                        %@averageRisk.ToString("F1")
+                                    </div>
+                                </div>
+                            </div> *@
                             <div class="alert alert-@Model.RiskColor">
                                 <strong>Değerlendirme:</strong><br>
                                 @Model.Message
@@ -69,31 +94,55 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="card border-primary mb-3">
                                 <div class="card-header bg-primary text-white">
-                                    <strong><i class="fas fa-tree me-2"></i>Random Forest Sınıflandırma</strong>
+                                    <strong><i class="fas fa-tree me-2"></i>Random Forest</strong>
                                 </div>
-                                <div class="card-body">
-                                    <h5>
+                                <div class="card-body text-center">
+                                    <h6>
                                         <span class="badge bg-@(Model.HasHeartDisease ? "danger" : "success") fs-6">
                                             @Model.ClassificationResult
                                         </span>
-                                    </h5>
-                                    <small class="text-muted">Kesin sınıflandırma sonucu</small>
+                                    </h6>
+                                    <h6 class="text-primary mt-2">
+                                        %@Model.FastForestProbability.ToString("F1")
+                                    </h6>
+                                    <small class="text-muted">Sınıflandırma + Olasılık</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="card border-info mb-3">
                                 <div class="card-header bg-info text-white">
-                                    <strong><i class="fas fa-chart-line me-2"></i>Logistic Regression Olasılık</strong>
+                                    <strong><i class="fas fa-chart-line me-2"></i>Logistic Regression</strong>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body text-center">
                                     <h5 class="text-@Model.RiskColor">
                                         %@Model.RiskProbability.ToString("F1")
                                     </h5>
                                     <small class="text-muted">Risk olasılık oranı</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-warning mb-3">
+                                <div class="card-header bg-warning text-dark">
+                                    <strong><i class="fas fa-balance-scale me-2"></i>Model Karşılaştırma</strong>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="mb-2">
+                                        <small class="text-muted">RF vs LR Farkı:</small>
+                                    </div>
+                                    <h6 class="@(Math.Abs(Model.FastForestProbability - Model.RiskProbability) > 10 ? "text-warning" : "text-success")">
+                                        @{
+                                            var difference = Math.Abs(Model.FastForestProbability - Model.RiskProbability);
+                                        }
+                                        %@difference.ToString("F1")
+                                    </h6>
+                                    <small class="text-muted">
+                                        @(difference > 15 ? "Yüksek Fark" : difference > 5 ? "Orta Fark" : "Düşük Fark")
+                                    </small>
                                 </div>
                             </div>
                         </div>

@@ -30,7 +30,17 @@ namespace HeartMVC.Services
             }
             return true;
         }
+        /*
 
+                        (Root Node)
+                             Age > 50?
+                            /          \
+                        Yes             No
+                    Chol > 240?       Thalach > 150?
+                     /     \             /        \
+                 (Leaf) (Leaf)        (Leaf)     (Leaf)
+
+        */
         private async Task TrainModelAsync()
         {
             await Task.Run(() =>
@@ -103,6 +113,41 @@ namespace HeartMVC.Services
 
             var prediction = predictionEngine.Predict(heartData);
             return prediction.Prediction;
+        }
+
+        public float PredictProbability(HeartInputViewModel input)
+        {
+            if (_model == null)
+            {
+                _model = _mlContext.Model.Load(_modelPath, out _);
+            }
+
+            var heartData = new HeartData
+            {
+                Age = input.Age,
+                Sex = input.Sex,
+                Cp = input.Cp,
+                Trestbps = input.Trestbps,
+                Chol = input.Chol,
+                Fbs = input.Fbs,
+                Restecg = input.Restecg,
+                Thalach = input.Thalach,
+                Exang = input.Exang,
+                Oldpeak = input.Oldpeak,
+                Slope = input.Slope,
+                Ca = input.Ca,
+                Thal = input.Thal
+            };
+
+            var predictionEngine = _mlContext.Model.CreatePredictionEngine<HeartData, HeartPrediction>(_model);
+
+            var prediction = predictionEngine.Predict(heartData);
+
+            // Random Forest için score'u probability'ye çevirme
+            // Sigmoid fonksiyonu kullanarak normalizasyon
+            float probability = 1.0f / (1.0f + (float)Math.Exp(-prediction.Score));
+            
+            return probability;
         }
     }
 }
